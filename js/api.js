@@ -7,10 +7,9 @@
  * 4. Add Previous/Next, First/Last and get Comic by ID functionality to the app
  * 5. Adjust UI states accordingly
  */
-// const CORS_HEADER = "https://cors-anywhere.herokuapp.com/";
-const BASE_URL = `https://xkcd.now.sh/`;
-// const buildComicUrl = (id) => (id !== undefined ? `${BASE_URL}${id}/info.0.json` : `${BASE_URL}/info.0.json`);
-const buildComicUrl = (id) => (id !== undefined ? `${BASE_URL}${id}` : `${BASE_URL}`);
+const CORS_HEADER = "https://cors-anywhere.herokuapp.com/";
+const BASE_URL = `${CORS_HEADER}https://xkcd.com/`;
+const buildComicUrl = (id) => (id !== undefined ? `${BASE_URL}${id}/info.0.json` : `${BASE_URL}/info.0.json`);
 
 class DomInterface {
     constructor() {
@@ -83,16 +82,13 @@ class RequestController {
         };
         this.currentComicsNumber = 0;
         this.maxComicsNumber = 0;
-
-        this.getCurrentComicsNumber();
     }
 
     async getComic(id) {
         const url = buildComicUrl(id);
-        console.log({ url });
         this.dom.showLoader();
 
-        const res = await fetch(url);
+        const res = await this.fetch(url);
 
         if (!res.ok) {
             throw new Error(`Failed to get comic${id ? " " + id : ""}`);
@@ -109,19 +105,13 @@ class RequestController {
         this.maxComicsNumber = this.currentComicsNumber;
     }
 
-    setComic(comic) {
-        this.dom.image = comic.img;
-        this.dom.title = comic.title;
-        this.dom.hideLoader();
-    }
-
     async setRandomComic() {
         try {
             const randomId = Math.floor(Math.random() * this.maxComicsNumber) + 1;
             const comic = await this.getComic(randomId);
-            this.setComic(comic);
+            this.dom.showComics(comic);
         } catch (err) {
-            console.log({ err });
+            console.error({ err });
             this.dom.showError();
         }
     }
@@ -129,17 +119,56 @@ class RequestController {
     async setCurrComic() {
         try {
             const comic = await this.getComic(this.currentComicsNumber);
-            this.setComic(comic);
+            this.dom.showComics(comic);
         } catch (err) {
-            console.log({ err });
+            console.error({ err });
             this.dom.showError();
         }
     }
 
-    registerEvents() {}
+    async setComic(id) {
+        this.currentComicsNumber = id;
+        await this.setCurrComic();
+    }
+
+    async increment() {
+        if (this.currentComicsNumber >= this.maxComicsNumber) return;
+        this.currentComicsNumber++;
+        await this.setCurrComic();
+    }
+
+    async decrement() {
+        if (this.currentComicsNumber <= 1) return;
+        this.currentComicsNumber--;
+        await this.setCurrComic();
+    }
+
+    async registerEvents() {
+        this.dom.controls.random.addEventListener("click", async () => {
+            await this.setRandomComic();
+        });
+
+        this.dom.controls.next.addEventListener("click", async () => {
+            await this.increment();
+        });
+
+        this.dom.controls.previous.addEventListener("click", async () => {
+            await this.decrement();
+        });
+
+        this.dom.controls.first.addEventListener("click", async () => {
+            await this.setComic(1);
+        });
+
+        this.dom.controls.last.addEventListener("click", async () => {
+            await this.setComic(this.maxComicsNumber);
+        });
+    }
 }
 
 (async () => {
     const controller = new RequestController();
+    await controller.getCurrentComicsNumber();
+    await controller.registerEvents();
     controller.setCurrComic();
 })();
