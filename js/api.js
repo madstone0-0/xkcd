@@ -86,7 +86,9 @@ class RequestController {
 
     async getComic(id) {
         const url = buildComicUrl(id);
+        this.dom.hideErrors();
         this.dom.showLoader();
+        this.dom.clearResults();
 
         const res = await this.fetch(url);
 
@@ -143,6 +145,25 @@ class RequestController {
         await this.setCurrComic();
     }
 
+    async searchId(id) {
+        this.dom.hideErrors();
+        if (id === "") {
+            this.showFormError("Please enter a comic id");
+            return;
+        }
+
+        if (isNaN(id)) {
+            this.dom.showFormError("Comic id must be a number");
+            return;
+        }
+
+        if (id > this.maxComicsNumber || id < 1) {
+            this.dom.showFormError(`Comic id must be among 1 and ${this.maxComicsNumber}`);
+            return;
+        }
+        await this.setComic(parseInt(id));
+    }
+
     async registerEvents() {
         this.dom.controls.random.addEventListener("click", async () => {
             await this.setRandomComic();
@@ -162,6 +183,12 @@ class RequestController {
 
         this.dom.controls.last.addEventListener("click", async () => {
             await this.setComic(this.maxComicsNumber);
+        });
+
+        this.dom.form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const id = this.dom.searchField.value;
+            await this.searchId(id);
         });
     }
 }
